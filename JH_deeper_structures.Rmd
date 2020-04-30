@@ -15,7 +15,9 @@ The PWT contains internationally-comparable annual data on real GDP output-metho
 
 The data are interpreted *naively*, under the strong assumption that the variables in the data set match exactly the corresponding Marxist categories.  Admittedly, this assumption implies a measurement error of unknown size. 
 
-To allow full replicability of results, the data sets utilized and the R code are stored in GitHub.
+To allow full replicability of results, the data sets utilized and the R code are stored in a GitHub repository: 
+
+https://github.com/jhuato/deeper_structures
 
 ```{r}
 library(readr)
@@ -326,3 +328,4 @@ plot.multi.dens(list(ka75,ka95,ka15))
 title(main = expression(paste(log(kappa), ": Accumulation rate")))
 legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
 ```
+
