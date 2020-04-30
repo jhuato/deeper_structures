@@ -1,0 +1,328 @@
+---
+title: "The Deeper Structures of Postwar Global Capitalism"
+author: "Julio Huato"
+output: html_document
+---
+
+## Preamble
+
+This paper seeks to characterize the evolving structure of postwar global capitalist society using 
+
+- Marx's critique of capital as theoretical framework and 
+- the Penn World Tables 9.1 (PWT) as empirical material.
+
+The PWT contains internationally-comparable annual data on real GDP output-method $Y$, real GDP expenditure-method $Y^e$, population $N$, employment $E$, average hours of labor per employed person $l$, labor share of income $\omega$, consumption share of income $c$, end-of-period capital stock $K$, capital services $K^s$, and the internal rate of return of capital $\tilde{r}$ for 168 countries.  The period under consideration ranges from 1954 to 2017.  
+
+The data are interpreted *naively*, under the strong assumption that the variables in the data set match exactly the corresponding Marxist categories.  Admittedly, this assumption implies a measurement error of unknown size. 
+
+To allow full replicability of results, the data sets utilized and the R code are stored in GitHub.
+
+```{r}
+library(readr)
+x  <- read_csv("C:/Users/jhuat/Downloads/pwt91.csv")
+x <- x[ which(x$year > 1953 ), ]
+x$c <- x$csh_c
+x$c[x$c<0 | x$c>1] <- NA 
+x$Y <- x$rgdpo 
+x$Ye <- x$rgdpe
+x$om <- x$labsh
+x$l <- x$avh
+x$Ks <- x$rkna
+x$W <- x$labsh * x$Y
+x$C <- x$c * x$Ye
+x$K <- x$rnna
+x$N <- x$pop
+x$E <- x$emp
+x$L <- x$avh * x$E
+x <- x[ , c(1, 4, 53:64)]
+str(x)
+summary(x)
+```
+
+The variables (hereon called ``parameters'') that capture the deeper structures of a capitalist society are, respectively,
+
+1. Labor productivity, measured by 
+- real output per capita $y^N \equiv Y/N$, 
+- real output per employed person $y^E \equiv Y/E$, and 
+- real output per hour of labor $y^L \equiv Y/(l E)$.
+2. Exploitation or balance of class forces, measured by
+- the real per-capita wage $w^N \equiv [(1- \omega) Y]/N$,
+- the real per-worker wage $w^N \equiv [(1- \omega) Y]/E$,
+- the real per-hour wage rate $w^L \equiv [(1- \omega) Y]/L$,
+- the rate of exploitation $\sigma \equiv [(1-\omega) Y]/(\omega Y) = (1-\omega)/\omega$ and
+- the rate of expenditure exploitation $\sigma^s \equiv [(1 - c) Y^e]/ (c Y^e) = (1-c)/c$.
+3. Profitability of capital, measured by
+- the flow-flow capital composition $h \equiv W/K^s$
+- the output-capital ratio $\rho \equiv Y/K$,
+- the profit rate $r \equiv [(1- \omega) Y]/K$, and
+- the accumulation rate $\epsilon \equiv[(1 - c) Y]/K$.
+
+This computes the annual parameters for each country:
+```{r}
+x$yN <- x$Y/x$N
+x$yE <- x$Y/x$E
+x$yL <- x$Y/x$L
+x$wN <- (1 - x$om)*x$Y/x$N
+x$wE <- (1 - x$om)*x$Y/x$E
+x$wL <- (1 - x$om)*x$Y/x$L
+x$s <- (1 - x$om)/x$om
+x$ss <- (1 - x$c)/x$c
+x$h <- x$Ks/x$W
+x$rho <- x$Y/x$K
+x$r <- (1 - x$om)*x$Y/x$K
+x$ka <- (1 - x$c)*x$Y/x$K
+str(x)
+```
+
+These structures are defined *globally*, by agggregation of
+
+- population and employment and 
+- real GDP. 
+
+```{r}
+N <- tapply(x$N, x$year, sum, na.rm=TRUE) 
+E <- tapply(x$E, x$year, sum, na.rm=TRUE)
+L <- tapply(x$L, x$year, sum, na.rm=TRUE) 
+Y <- tapply(x$Y, x$year, sum, na.rm=TRUE) 
+Ye <- tapply(x$Ye, x$year, sum, na.rm=TRUE) 
+W <- tapply(x$W, x$year, sum, na.rm=TRUE) 
+C <- tapply(x$C, x$year, sum, na.rm=TRUE) 
+K <- tapply(x$K, x$year, sum, na.rm=TRUE)
+Ks <- tapply(x$Ks, x$year, sum, na.rm=TRUE)
+yN <- Y/N
+yE <- Y/E
+yL <- Y/L
+wN <- W/N
+wE <- W/E
+wL <- W/L
+s <- (Y-W)/W
+ss <- (Y - C)/C
+h <- Ks/W
+rho <- Y/K
+r <- (Y-W)/K
+ka <- (Y-C)/K
+year <- c(1954:2017)
+g <- data.frame(year, N, E, L, Y, Ye, W, C, K, yN, yE, yL, wN, wE, wL, 
+                s, ss, h, rho, r, ka)
+str(g)
+```
+
+Also, these structures are defined *internationally* by taking account, in due turn, of each country's
+
+- economic weight as measured by its annual real GDP (output method) and
+- legal existence as an autonomous entity (one country is one unit of observation). 
+
+The analysis seeks to empirically characterize 
+
+- the evolution of these structures over the period and 
+- their distribution across countries for given years or subperiods.
+
+The last section reports on the results of VARs, SVARs, VECM, and SVECM estimations, in an attempt to capture structural relations among 
+
+- productivity measures,
+- exploitation rates, and either
+- capital compositions or output/capital ratios, *or*
+- profit or accumulation rates.
+
+
+## Global results
+
+The following plots show the different measures of labor productivity (per capita, per worker, and per hour) in contrast with the corresponding measures of the real wage (per capita, per worker, and per hour):
+
+```{r}
+byN <- coef(lm(log(g$yN) ~ g$year))[2]
+bwN <- coef(lm(log(g$wN) ~ g$year))[2]
+plot(g$year, g$yN, type="l", ylim=c(2000, 15000), 
+     main="Global per-capita productivity and wage", 
+     xlab="Year", ylab="2011 USD")
+lines(g$year, g$wN, lty=2)
+mtext(bquote(hat(y[N]) ==.(round(byN, 4))~","~ hat(w[N]) ==.(round(bwN, 4))))
+legend("topleft", bty="n", lty=c(1, 2), c(expression(paste(y[N]), paste(w[N]))))
+
+byE <- coef(lm(log(g$yE) ~ g$year))[2]
+bwE <- coef(lm(log(g$wE) ~ g$year))[2]
+plot(g$year, g$yE, type="l", ylim=c(5000, 35000), 
+     main="Global per-worker productivity and wage", 
+     xlab="Year", ylab="2011 USD")
+lines(g$year, g$wE, lty=2)
+mtext(bquote(hat(y[E]) ==.(round(byE, 4))~","~ hat(w[E]) ==.(round(bwE, 4))))
+legend("topleft", bty="n", lty=c(1, 2), c(expression(paste(y[E]), paste(w[E]))))
+
+byL <- coef(lm(log(g$yL[-c(1:16)]) ~ g$year[-c(1:16)]))[2]
+bwL <- coef(lm(log(g$wL[-c(1:16)]) ~ g$year[-c(1:16)]))[2]
+plot(g$year[-c(1:16)], g$yL[-c(1:16)], type="l", ylim=c(0, 20), 
+     main="Global per-hour productivity and wage", 
+     xlab="Year", ylab="2011 USD")
+lines(g$year[-c(1:16)], g$wL[-c(1:16)], lty=2)
+mtext(bquote(hat(y[L])  ==.(round(byL, 4))~","~ hat(w[L])  ==.(round(bwL, 4))))
+legend("topleft", bty="n", lty=c(1, 2), c(expression(paste(y[L]), paste(w[L]))))
+```
+
+These plots show, respectively, the exploitation and expenditure-exploitation rates:
+
+```{r}
+bs <- coef(lm(log(g$s) ~ g$year))[2]
+bss <- coef(lm(log(g$ss) ~ g$year))[2]
+plot(g$year, g$s, type="l", ylim=c(0.4, 1),
+     main="Global exploitation rates", 
+     xlab="Year", ylab=" ")
+lines(g$year, g$ss, lty=2)
+mtext(bquote(hat(sigma)  ==.(round(bs, 4))~","~ hat(sigma[e]) ==.(round(bss, 4))))
+legend("topleft", bty="n", lty=c(1, 2), c(expression(paste(sigma), paste(sigma[e] ))))
+```
+
+The flow-flow capital consumption plot follows:
+
+```{r}
+bh <- coef(lm(log(g$h) ~ g$year))[2]
+plot(g$year, g$h, type="l", 
+     main="Global flow-flow capital composition", 
+     xlab="Year", ylab="h")
+mtext(bquote(hat(h) ==.(round(bh, 4))))
+```
+
+The output-capital ratio plot follows:
+
+```{r}
+brho <- coef(lm(log(g$rho) ~ g$year))[2]
+plot(g$year, g$rho, type="l", 
+     main="Global output-capital ratio", 
+     xlab="Year", ylab=expression(paste(rho)))
+mtext(bquote(hat(rho) ==.(round(brho, 4))))
+```
+
+The following plots show the profit and accumulation rates: 
+```{r}
+br <- coef(lm(log(g$r) ~ g$year))[2]
+bka <- coef(lm(log(g$ka) ~ g$year))[2]
+plot(g$year, g$r, type="l", ylim=c(0.08, .13),
+     main="Global profit rates", 
+     xlab="Year", ylab=" ")
+lines(g$year, g$ka, lty=2)
+mtext(bquote(hat(r)  ==.(round(br, 4))~","~ hat(kappa) ==.(round(bka, 4))))
+legend("topleft", bty="n", lty=c(1, 2), c(expression(paste(r), paste(kappa))))
+```
+
+## International results
+
+The following density plots show the international distribution of the deeper structural parameters in selected years: 1975, 1995, and 2015:
+
+```{r}
+yN75<-log(na.omit(subset(x$yN, x$year==1975)))
+yN95<-log(na.omit(subset(x$yN, x$year==1995)))
+yN15<-log(na.omit(subset(x$yN, x$year==2015)))
+
+yE75<-log(na.omit(subset(x$yE, x$year==1975)))
+yE95<-log(na.omit(subset(x$yE, x$year==1995)))
+yE15<-log(na.omit(subset(x$yE, x$year==2015)))
+
+yL75<-log(na.omit(subset(x$yL, x$year==1975)))
+yL95<-log(na.omit(subset(x$yL, x$year==1995)))
+yL15<-log(na.omit(subset(x$yL, x$year==2015)))
+
+wN75<-log(na.omit(subset(x$wN, x$year==1975)))
+wN95<-log(na.omit(subset(x$wN, x$year==1995)))
+wN15<-log(na.omit(subset(x$wN, x$year==2015)))
+
+wE75<-log(na.omit(subset(x$wE, x$year==1975)))
+wE95<-log(na.omit(subset(x$wE, x$year==1995)))
+wE15<-log(na.omit(subset(x$wE, x$year==2015)))
+
+wL75<-log(na.omit(subset(x$wL, x$year==1975)))
+wL95<-log(na.omit(subset(x$wL, x$year==1995)))
+wL15<-log(na.omit(subset(x$wL, x$year==2015)))
+
+s75<-log(na.omit(subset(x$s, x$year==1975)))
+s95<-log(na.omit(subset(x$s, x$year==1995)))
+s15<-log(na.omit(subset(x$s, x$year==2015)))
+
+ss75<-log(na.omit(subset(x$ss, x$year==1975)))
+ss95<-log(na.omit(subset(x$ss, x$year==1995)))
+ss15<-log(na.omit(subset(x$ss, x$year==2015)))
+
+h75<-log(na.omit(subset(x$h, x$year==1975)))
+h95<-log(na.omit(subset(x$h, x$year==1995)))
+h15<-log(na.omit(subset(x$h, x$year==2015)))
+
+rho75<-log(na.omit(subset(x$rho, x$year==1975)))
+rho95<-log(na.omit(subset(x$rho, x$year==1995)))
+rho15<-log(na.omit(subset(x$rho, x$year==2015)))
+
+r75<-log(na.omit(subset(x$r, x$year==1975)))
+r95<-log(na.omit(subset(x$r, x$year==1995)))
+r15<-log(na.omit(subset(x$r, x$year==2015)))
+
+ka75<-log(na.omit(subset(x$ka, x$year==1975)))
+ka95<-log(na.omit(subset(x$ka, x$year==1995)))
+ka15<-log(na.omit(subset(x$ka, x$year==2015)))
+
+# Multi plot function:
+# The input of the function MUST be a numeric list
+plot.multi.dens <- function(s)
+{
+        junk.x = NULL
+        junk.y = NULL
+        for(i in 1:length(s))
+        {
+                junk.x = c(junk.x, density(s[[i]])$x)
+                junk.y = c(junk.y, density(s[[i]])$y)
+        }
+        xr <- range(junk.x)
+        yr <- range(junk.y)
+        plot(density(s[[1]]), xlim = xr, ylim = yr, main = "", xlab = "")
+        for(i in 1:length(s))
+        {
+                lines(density(s[[i]]), xlim = xr, ylim = yr, lty=i)
+        }
+}
+
+library(Hmisc)
+# Density plots:
+plot.multi.dens(list(yN75,yN95,yN15))
+title(main = expression(paste(log(y[N]), ": Per-capita productivity")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(yE75,yE95,yE15))
+title(main = expression(paste(log(y[E]), ": Per-worker productivity")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(yL75,yL95,yL15))
+title(main = expression(paste(log(y[L]), ": Per-hour productivity")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(wN75,wN95,wN15))
+title(main = expression(paste(log(w[N]), ": Per-capita wage")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(wE75,wE95,wE15))
+title(main = expression(paste(log(w[E]), ": Per-worker wage")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(wL75,wL95,wL15))
+title(main = expression(paste(log(w[L]), ": Per-hour wage")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(s75,s95,s15))
+title(main = expression(paste(log(sigma), ": Exploitation rate")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(ss75,ss95,ss15))
+title(main = expression(paste(log(sigma[e]), ": Expenditure-exploitation rate")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(h75,h95,h15))
+title(main = expression(paste(log(h), ": Capital composition")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(rho75,rho95,rho15))
+title(main = expression(paste(log(rho), ": Output-capital ratio")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(r75,r95,r15))
+title(main = expression(paste(log(r), ": Profit rate")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+
+plot.multi.dens(list(ka75,ka95,ka15))
+title(main = expression(paste(log(kappa), ": Accumulation rate")))
+legend("topleft", bty="n", legend=c("1975","1995","2015"), lty =(1:3))
+```
