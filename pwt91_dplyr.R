@@ -1,8 +1,7 @@
 # PWT Deeper Structures using dplyr
+
 library(tidyverse)
-
 library(dplyr)
-
 library(data.table)
 library(ggplot2)
 library("rio")
@@ -99,8 +98,21 @@ g<-g %>% mutate(yN=Y/N, # Global per-capita productivity
                 h=Ks/W, # Global capital composition (flow-flow)
                 rho=Y/K, # Global capital productivity (flow-stock)
                 r=(Y-W)/K, # Global profit rate
-                ka=(Y-C)/K,
+                ka=(Y-C)/K, # Global accumulation rate
                 year=c(1954:2017)) # Global accumulation rate
 
+# GLOBAL STRUCTURAL PROPORTIONS (YEAR SERIES) PLOTS
+# Productivity
 
+#Generate Rates of Growth
 
+b2=~coef(lm(log(.x)~g$year))[2]  
+
+g_hat<-g %>% summarise_all(b2) %>% select(-1)
+
+# GLOBAL STRUCTURAL PROPORTIONS (YEAR SERIES) PLOTS
+# Productivity
+
+g %>% ggplot(aes(x=year,y=yN))+geom_line(aes(y=yN))+geom_line(aes(y=wN))+
+  ylab("2011 USD dollars")
+                                                              
